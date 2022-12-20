@@ -1,5 +1,3 @@
-#import telebot
-#from telebot import types
 import time
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -11,7 +9,6 @@ TOKEN = '***'
 #bot = telebot.TeleBot(TOKEN)
 bot = Bot(token=TOKEN)
 dep = Dispatcher(bot)
-
 flag = 0
 
 @dep.message_handler(commands=['start'])
@@ -173,6 +170,5 @@ async def get_text_message(message):
         await bot.leave_chat(message.chat.id)
     
 
-#bot.polling(none_stop=True, interval=0)
 if __name__ == '__main__':
     executor.start_polling(dep)
