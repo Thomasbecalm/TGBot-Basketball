@@ -7,7 +7,7 @@ from aiogram.utils import executor
 from random import randint
 from asyncio import sleep
 
-TOKEN = '5464997998:AAEZVD_nagk3oQpd8jaUXF74csL81getRIo'
+TOKEN = '***'
 #bot = telebot.TeleBot(TOKEN)
 bot = Bot(token=TOKEN)
 dep = Dispatcher(bot)
