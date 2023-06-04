@@ -46,7 +46,7 @@ async def process_start_command(message: Message):
     keyboard2: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[[menu_botton]],
                                                         resize_keybord=True)
     await message.answer_photo(
-        photo='https://i.pinimg.com/564x/37/57/68/375768400dc59a9e184d85601e14dcd8.jpg',
+        photo='https://i.pinimg.com/564x/bc/99/11/bc99116f57ff62dfd621f6b935f64ec3.jpg',
         reply_markup=keyboard2)
 
     reg_botton: InlineKeyboardButton = InlineKeyboardButton(
@@ -208,8 +208,69 @@ async def process_go_to_menu(message: Message):
     keyboard2: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[[menu_botton]],
                                                         resize_keybord=True)
     await message.answer_photo(
-        photo='https://i.pinimg.com/564x/37/57/68/375768400dc59a9e184d85601e14dcd8.jpg',
+        photo='https://i.pinimg.com/564x/bc/99/11/bc99116f57ff62dfd621f6b935f64ec3.jpg',
         reply_markup=keyboard2)
+
+    srch_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='⛹🏿‍♂️ Найти площадку поблизости',
+        callback_data='court_search')
+    addd_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='🗑️ Добавить новую площадку',
+        callback_data='court_adding')
+    prsn_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='🗄️ Личный кабинет',
+        callback_data='personal_area')
+    tech_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='⚙️ Тех. Поддержка',
+        callback_data='tech_setting')
+    setevnt_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='📆 Назначить мероприятие',
+        callback_data='set_event')
+    casegame_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='⚒️ Действия с игрой',
+        callback_data='case_game')
+    caseevent_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='🛠️ Действия с мероприятием',
+        callback_data='case_event')
+    search_events_botton: InlineKeyboardButton = InlineKeyboardButton(
+        text='🧾 Показать мероприятия',
+        callback_data='search_events')
+    keyboard: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=[[srch_botton],
+                         [addd_botton],
+                         [search_events_botton],
+                         [setevnt_botton],
+                         [casegame_botton],
+                         [caseevent_botton],
+                         [prsn_botton],
+                         [tech_botton]])
+    await message.answer(
+        text='Ну вот и все! Вся информация собрана, система улучшена, результаы усовершенствованы!\n'
+             'Вот такие функции вам доступны в нашем боте:',
+        reply_markup=keyboard)
+
+class AddGame(StatesGroup):
+    latitude=State()
+    longitude=State()
+    result_court_id=State()
+
+@router.message(Text(text=['🏠 Меню']), StateFilter(AddGame.result_court_id))
+async def process_go_to_menu(message: Message, state: FSMContext):
+    users_db: dict = {}
+    events_db: dict = {}
+    admin_events_db: dict = {}
+
+    court_data = await state.get_data()
+    BotDB.exit_player_from_court(message.from_user.id, court_data["result_court_id"])
+
+    menu_botton: KeyboardButton = KeyboardButton(text=' 🏠 Меню')
+    keyboard2: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[[menu_botton]],
+                                                        resize_keybord=True)
+    await message.answer_photo(
+        photo='https://i.pinimg.com/564x/bc/99/11/bc99116f57ff62dfd621f6b935f64ec3.jpg',
+        reply_markup=keyboard2)
+
+    await state.clear()
 
     srch_botton: InlineKeyboardButton = InlineKeyboardButton(
         text='⛹🏿‍♂️ Найти площадку поблизости',
@@ -258,7 +319,7 @@ async def process_go_to_menu(message: Message, state: FSMContext):
     keyboard2: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[[menu_botton]],
                                                         resize_keybord=True)
     await message.answer_photo(
-        photo='https://i.pinimg.com/564x/37/57/68/375768400dc59a9e184d85601e14dcd8.jpg',
+        photo='https://i.pinimg.com/564x/bc/99/11/bc99116f57ff62dfd621f6b935f64ec3.jpg',
         reply_markup=keyboard2)
 
     await state.clear()
@@ -585,7 +646,7 @@ async def add_court(message: Message, state: FSMContext):
     await message.answer('Вы находитесь в процессе выполнения другого дейтсвия, команда "/add_court" не доступна!\n\n'
                          'Для остановки заполнения, выполните команду "/cancel"(нажмите кнопку "🏠 Меню") или просто продолжайте согласно инструкциям!')
 
-@router.message(StateFilter(AddCourt.name), F.text.isalpha())
+@router.message(StateFilter(AddCourt.name))
 async def add_court_name(message: Message, state: FSMContext):
     """
     Эта функция сохраняет название баскетбольной площадки и запрашивает адрес.
@@ -607,15 +668,15 @@ async def add_court_name(message: Message, state: FSMContext):
                          reply_markup=keyboard)
     await state.set_state(AddCourt.image_id)
 
-@router.message(StateFilter(AddCourt.name))
-async def warning_not_name(message: Message):
-    """
-    Хэндлер
-    """
-    await message.answer(text='То, что вы отправили не похоже на название!\n'
-                              'Введите оригинальное название, состоящие ТОЛЬКО из букв!\n'
-                              'Если вы хотите прервать заполнение анкеты - '
-                              'отправьте команду /cancel(нажмите кнопку "🏠 Меню")')
+# @router.message(StateFilter(AddCourt.name))
+# async def warning_not_name(message: Message):
+#     """
+#     Хэндлер
+#     """
+#     await message.answer(text='То, что вы отправили не похоже на название!\n'
+#                               'Введите оригинальное название, состоящие ТОЛЬКО из букв!\n'
+#                               'Если вы хотите прервать заполнение анкеты - '
+#                               'отправьте команду /cancel(нажмите кнопку "🏠 Меню")')
 
 
 
@@ -681,6 +742,17 @@ async def ad_court_address(message: Message, state: FSMContext):
     """
     await state.update_data(latitude=message.location.latitude)
     await state.update_data(longitude=message.location.longitude)
+
+    # ПРОЦЕСС ОБРАЩЕНИЯ К АПИ GEOPY
+    ctx = ssl._create_unverified_context(cafile=certifi.where())
+    geopy.geocoders.options.default_ssl_context = ctx
+    geolocator = Nominatim(user_agent='SetCourt', scheme='https')
+    # geolocator = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+    # collisions['geocodes'] = collisions['location_string'].apply(geolocator)
+    geo_str = str(message.location.latitude) + ", " + str(message.location.longitude)
+    location = geolocator.reverse(geo_str)
+    await state.update_data(address=location.address)
+
     user_data = await state.get_data()
     result_id = BotDB.add_court(user_data["user_id"], user_data["name"], user_data["image_id"],
                     user_data["address"], user_data["latitude"], user_data["longitude"])
@@ -730,6 +802,16 @@ async def add_court_coordinates(message: Message, state: FSMContext):
         lat, lng = float(lat.strip()), float(lng.strip())
         await state.update_data(latitude=lat)
         await state.update_data(longitude=lng)
+
+        # ПРОЦЕСС ОБРАЩЕНИЯ К АПИ GEOPY
+        ctx = ssl._create_unverified_context(cafile=certifi.where())
+        geopy.geocoders.options.default_ssl_context = ctx
+        geolocator = Nominatim(user_agent='SetCourt', scheme='https')
+        # geolocator = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+        # collisions['geocodes'] = collisions['location_string'].apply(geolocator)
+        geo_str = str(lat) + ", " + str(lng)
+        location = geolocator.reverse(geo_str)
+        await state.update_data(address=location.address)
 
         user_data = await state.get_data()
         result_id = BotDB.add_court(user_data["user_id"], user_data["name"], user_data["image_id"],
@@ -813,8 +895,11 @@ async def ad_court_address(message: Message, state: FSMContext):
         reply_murkup=keyboard2)
 
 # ПРОЦЕСС ПОИСКА БЛИЖАЙШЕЙ ПЛОЩАДКИ
+class SearchCourt(StatesGroup):
+    event=State()
+
 @router.callback_query(Text(text=['court_search']), StateFilter(default_state))
-async def process_search_court(callback: CallbackQuery):
+async def process_search_court(callback: CallbackQuery, state: FSMContext):
     """
     Обработчик ....
     """
@@ -834,11 +919,11 @@ async def process_search_court(callback: CallbackQuery):
         "Вы можете поделиться своей геолокацией(соответсвенно поиск будет идти от вашего текущего местоположения), а также указать точное местоположение, "
         "указав на карте или введя данные координаты вручную:",
         reply_markup=keyboard)
-
+    await state.set_state(SearchCourt.event)
     await callback.answer()
 
 @router.message(Command(commands=['search_courts']), StateFilter(default_state))
-async def process_search_court(message: Message):
+async def process_search_court(message: Message, state: FSMContext):
     """
     Обработчик ....
     """
@@ -858,17 +943,19 @@ async def process_search_court(message: Message):
         "Вы можете поделиться своей геолокацией(соответсвенно поиск будет идти от вашего текущего местоположения), а также указать точное местоположение, "
         "указав на карте или введя данные координат вручную:\n",
         reply_markup=keyboard)
+    await state.set_state(SearchCourt.event)
 
-@router.message(Text(text='🗺️ Ввести координаты'), StateFilter(default_state))
-async def process_coord_point(message: Message):
+@router.message(Text(text='🗺️ Ввести координаты'), StateFilter(SearchCourt.event))
+async def process_coord_point(message: Message, state: FSMContext):
     menu_botton: KeyboardButton = KeyboardButton(text=' 🏠 Меню')
     keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[[menu_botton]],
                                                         resize_keybord=True)
     await message.answer(text="Введите точные координаты согласно формату: широта, долгота(как в примере: 40.7128, -74.0060)",
                          reply_markup=keyboard)
+    await state.set_state(SearchCourt.event)
 
-@router.message(StateFilter(default_state), F.content_type == ContentType.TEXT, ~Text(text='🫵🏼 Указать на карте'))
-async def process_point_on_map(message: Message):
+@router.message(StateFilter(SearchCourt.event), F.content_type == ContentType.TEXT, ~Text(text='🫵🏼 Указать на карте'))
+async def process_point_on_map(message: Message, state: FSMContext):
     try:
         lat, lng = message.text.split(',')
         lat, lng = float(lat.strip()), float(lng.strip())
@@ -880,6 +967,7 @@ async def process_point_on_map(message: Message):
         if (nearest_courts_data == None or nearest_courts_data == []):
             await message.answer(text='Прошу прощения, мне не удалось найти площадок по близости!',
                                  reply_markup=keyboard)
+            await state.clear()
         else:
             users_db[message.from_user.id] = [[0], nearest_courts_data]
             data = users_db[message.from_user.id][1][users_db[message.from_user.id][0][0]]
@@ -898,6 +986,7 @@ async def process_point_on_map(message: Message):
                     'backward',
                     f'{users_db[message.from_user.id][0][0] + 1}/{len(users_db[message.from_user.id][1])}',
                     'forward'))
+            await state.set_state(SearchCourt.event)
 
     except ValueError:
         await message.reply(
@@ -905,8 +994,8 @@ async def process_point_on_map(message: Message):
             "Пожалуйста, введите в таком формате: 40.7128, -74.0060")
 
 
-@router.message(Text(text='🫵🏼 Указать на карте'), StateFilter(default_state))
-async def process_point_on_map(message: Message):
+@router.message(Text(text='🫵🏼 Указать на карте'), StateFilter(SearchCourt.event))
+async def process_point_on_map(message: Message, state: FSMContext):
     menu_botton: KeyboardButton = KeyboardButton(text=' 🏠 Меню')
     keyboard2: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[[menu_botton]],
                                                          resize_keybord=True)
@@ -916,10 +1005,11 @@ async def process_point_on_map(message: Message):
              '3. Выберите место на карте.\n'
              '4. Нажмите "Отправить выбранную геопозицию".\n',
         reply_murkup=keyboard2)
+    await state.set_state(SearchCourt.event)
 
 
-@router.message(F.content_type == ContentType.LOCATION, StateFilter(default_state))  # МОГ НЕ ПОЛУЧИТЬ
-async def process_get_location(message: Message):
+@router.message(F.content_type == ContentType.LOCATION, StateFilter(SearchCourt.event)) # МОГ НЕ ПОЛУЧИТЬ
+async def process_get_location(message: Message, state: FSMContext):
     """
     Обработчик ....
     """
@@ -933,6 +1023,7 @@ async def process_get_location(message: Message):
     if (nearest_courts_data == None or nearest_courts_data == []):
         await message.answer(text='Прошу прощения, мне не удалось найти площадок по близости!',
                              reply_markup=keyboard)
+        await state.clear()
     else:
         users_db[message.from_user.id] = [[0], nearest_courts_data]
         data = users_db[message.from_user.id][1][users_db[message.from_user.id][0][0]]
@@ -951,8 +1042,9 @@ async def process_get_location(message: Message):
                         'backward',
                         f'{users_db[message.from_user.id][0][0] + 1}/{len(users_db[message.from_user.id][1])}',
                         'forward'))
+        await state.set_state(SearchCourt.event)
 
-@router.callback_query(Text(text='forward'))
+@router.callback_query(Text(text='forward'), StateFilter(SearchCourt.event))
 async def process_forward_press(callback: CallbackQuery):
     """
     Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "вперед"
@@ -979,7 +1071,7 @@ async def process_forward_press(callback: CallbackQuery):
                 'forward'))
     await callback.answer()
 
-@router.callback_query(Text(text='backward'))
+@router.callback_query(Text(text='backward'), StateFilter(SearchCourt.event))
 async def process_backward_press(callback: CallbackQuery):
     """
     Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "назад"
@@ -1172,7 +1264,7 @@ class ExitEvent(StatesGroup):
 @router.callback_query(Text(text='exit_event'), StateFilter(default_state))
 async def process_finish_event(callback: CallbackQuery, state: FSMContext):
     all_events_by_admin = BotDB.get_all_events_by_admin(callback.from_user.id)
-    if (all_events_by_admin == None):
+    if (all_events_by_admin == None or all_events_by_admin == []):
         await callback.message.answer(text='Вы до этого не создали ни одного мероприятия!')
     else:
         admin_events_db[callback.from_user.id] = [[0], all_events_by_admin]
@@ -1398,14 +1490,10 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
 async def process_page_press(callback: CallbackQuery):
     id = admin_events_db[callback.from_user.id][1][admin_events_db[callback.from_user.id][0][0]][0]
     BotDB.delete_event_by_id(id)
-    await callback.message.answer('Мероприятие успешно завершено!')
+    await callback.message.answer('Мероприятие успешно удалено!')
     await callback.answer()
 
 # ПРОЦЕСС ЗАПУСКА/ЗАВЕРШЕНИЯ АКТИВНОГО БАСКЕТБОЛЬНОГО МЕРОПРИЯТИЯ
-class AddGame(StatesGroup):
-    latitude=State()
-    longitude=State()
-    result_court_id=State()
 
 @router.callback_query(Text(text=['start_game']), StateFilter(default_state))
 async def process_start_game(callback: CallbackQuery, state: FSMContext):
@@ -1598,90 +1686,6 @@ async def open_profil(callback: CallbackQuery):
         reply_markup=keyboard)
 
     await callback.answer()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ПРОЦЕСС НАЗНАЧЕНИЯ БАСКЕТБОЛЬНОГО МЕРОПРИЯТИЯ НА ОПРЕДЕЛЕННУЮ ДАТУ
@@ -1964,6 +1968,7 @@ async def get_events(callback: CallbackQuery, state: FSMContext):
                 'backwar',
                 f'{events_db[callback.from_user.id][0][0] + 1}/{len(events_db[callback.from_user.id][1])}',
                 'forwar'))
+        await callback.message.answer(text='Нажав на центральную кнопку вы сможете зарегистрироваться на это мероприятие!')
         await state.set_state(SearchEvents.event)
     else:
         await callback.message.answer('Инициированных мероприятий в данный момент нет!')
@@ -1994,10 +1999,11 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
                                   f'Дата и время начала: {data[8]} {data[9]}\n\n'
                                   f'Описание: {data[10]}',
             reply_markup=pagination_kb.create_pagination_keyboard(
-                'backward',
+                'backwar',
                 f'{events_db[callback.from_user.id][0][0] + 1}/{len(events_db[callback.from_user.id][1])}',
-                'forward'))
-    await state.set_state(SearchEvents.event)
+                'forwar'))
+        # await callback.message.answer(
+        #     text='Нажав на центральную кнопку вы сможете зарегистрироваться на это мероприятие!')
     await callback.answer()
 
 @router.callback_query(Text(text='backwar'), StateFilter(SearchEvents.event))
@@ -2025,8 +2031,49 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
                                   f'Дата и время начала: {data[8]} {data[9]}\n\n'
                                   f'Описание: {data[10]}',
             reply_markup=pagination_kb.create_pagination_keyboard(
-                'backward',
+                'backwar',
                 f'{events_db[callback.from_user.id][0][0] + 1}/{len(events_db[callback.from_user.id][1])}',
-                'forward'))
-    await state.set_state(SearchEvents.event)
+                'forwar'))
+        # await callback.message.answer(
+        #     text='Нажав на центральную кнопку вы сможете зарегистрироваться на это мероприятие!')
     await callback.answer()
+
+@router.callback_query(lambda x: '/' in x.data and x.data.replace('/', '').isdigit(), StateFilter(SearchEvents.event))
+async def process_middle_presed(callback: CallbackQuery, state: FSMContext):
+    if (BotDB.user_exists(callback.from_user.id) == False):
+        reg_botton: InlineKeyboardButton = InlineKeyboardButton(
+            text='🤝🏼 Познакомится',
+            callback_data='user_registration')
+        canc_botton: InlineKeyboardButton = InlineKeyboardButton(
+            text='🙅🏽 Отмена',
+            callback_data='cancel_registration')
+        keyboard: InlineKeyboardMarkup = InlineKeyboardMarkup(
+            inline_keyboard=[[reg_botton, canc_botton]])
+        await callback.message.answer(text='Вы еще не зарегистрированы как новый пользователь в боте!\n'
+                                           'Но вы можете сделать это сейчас:',
+                                      reply_markup=keyboard)
+    else:
+        user_info = BotDB.get_info_about_user(callback.from_user.id)
+        # events_db[callback.from_user.id] = [[0], all_events]
+        event_level = events_db[callback.from_user.id][1][events_db[callback.from_user.id][0][0]][4]
+        event_id = events_db[callback.from_user.id][1][events_db[callback.from_user.id][0][0]][0]
+        print(event_id)
+        if (event_level != user_info[4]):
+            await callback.message.answer(text='Уровень игры не соответствует нужному!')
+        else:
+            BotDB.add_player_on_event(callback.message.from_user.id, event_id)
+            await callback.message.answer(text='Вы успешно зарегистрированы!')
+    await state.clear()
+    await callback.answer()
+
+
+@router.message()
+async def procces_handl_another_messages(message: Message):
+    """
+    Обработка всех остальных сообщений
+    """
+    menu_botton: KeyboardButton = KeyboardButton(text=' 🏠 Меню')
+    keyboard2: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[[menu_botton]],
+                                                         resize_keybord=True)
+    await message.answer(text='Ваш запрос мне не понятен!',
+                         reply_markup=keyboard2)

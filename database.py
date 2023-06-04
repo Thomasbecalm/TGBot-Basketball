@@ -2,27 +2,34 @@ import sqlite3
 
 from geopy.distance import geodesic
 from typing import List, Tuple
+from math import radians
+import geopy.distance
 
-#class for users  and playgrounds data base
 class BotDB:
     def __init__(self, db_file):
         """
         Инициализация объекта базы
+        :param str db_file: path to file
         """
         self.conn = sqlite3.connect(db_file)
         self.cursor = self.conn.cursor()
+
 
     """ Работа с юзерами """
     def user_exists(self, user_id):
         """
         Проверяем, есть ли юзер в базе
+        :param int user_id: ID of user
+        :return: true or false
         """
         result = self.cursor.execute("SELECT `id` FROM `users` WHERE `user_id` = ?", (user_id,))
         return bool(len(result.fetchall()))
 
     def get_user_id(self, user_id):
         """
-        Достаем id юзера в базе по его user_id
+        Достаем id юзера из базы по его user_id
+        :param int user_id: ID of user
+        :return: user's id
         """
         result = self.cursor.execute("SELECT `id` FROM `users` WHERE `user_id` = ?", (user_id,))
         return result.fetchone()[0]
@@ -30,41 +37,54 @@ class BotDB:
     def add_user(self, user_id, username, game_level, years_exprs):
         """
         Добавляем юзера в базу
+        :param int user_id: ID of user
+        :param str username: nickname of user
+        :param str game_level: level of user like player
+        :param int years_exprs: years of playing basketball
+        :return: result of commit exchanges
         """
         self.cursor.execute("INSERT INTO `users` (`user_id`, `username`, `rating`, `game_level`, `years_exprs`) VALUES (?, ?, ?, ?, ?)", (user_id, username, 0, game_level, years_exprs))
         return self.conn.commit()
 
     def get_info_about_user(self, user_id):
         """
-        as
+        Достаем всю информацию о пользователя из базы по его user_id
+        :param int user_id: ID of user
+        :return: All information
         """
         result = self.cursor.execute("SELECT * from `users` WHERE `user_id` = ?", (user_id,))
         return result.fetchone()
 
 
-
-
-
-
     """ Работа с площадками """
     def add_court(self, user_id, name, image_id, address, lat, lng):
         """
-        Define function to add a new basketball court to the database
+        Добавление новой площадки в базу
+        :param int user_id: ID of user
+        :param str name: Nickname of court
+        :param str image_id: ID of file
+        :param str address: Address of court
+        :param int lat: latitude
+        :param int lng: longitude
+        :return: id of new court
         """
         self.cursor.execute("INSERT INTO basketball_courts (user_id, name, image_id, address, latitude, longitude, players, green_player, yellow_player, red_player, years) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                             (user_id, name, image_id, address, lat, lng, 0, 0, 0, 0, 0))
         self.conn.commit()
         return self.cursor.lastrowid
 
-    # ТУТ мы ищем либо одну ближайшую площадку либо список из них
     def get_courts_nearby(self, latitude: float, longitude: float, radius: float = 5.0) ->\
             List[Tuple[int, int, str, str, str, float, float, int, int, int, int, int]]:
         """
-        Возвращает список баскетбольных площадок в радиусе 1 км от заданных координат.
+        Достаем список баскетбольных площадок в радиусе 1 км от заданных координат.
+        :param float latitude: latitude
+        :param float longitude: longitude
+        :param float radius: radius
+        :return: list of coutrs
         """
         # "SELECT *, (6371 * acos(cos(radians(?)) * cos(radians(?)) * cos(radians(longtitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance FROM basketball_courts ORDER BY distance ASC LIMIT 1",
         self.cursor.execute(
-            "SELECT *, (acos(sin(?)*sin(latitude) + cos(?)*cos(latitude)*cos(longitude-?))*6371) AS distance FROM basketball_courts WHERE distance<1000 ORDER BY distance",
+            "SELECT *, (acos(sin(radians(?))*sin(radians(latitude)) + cos(radians(?))*cos(radians(latitude))*cos(radians(longitude)-radians(?)))*6371) AS distance FROM basketball_courts WHERE distance<3 ORDER BY distance",
             (latitude, latitude, longitude,))
         # self.cursor.execute(
         #     "SELECT *, (6371 * acos(cos(radians(?)) * cos(radians(?)) * cos(radians(longtitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance FROM basketball_courts ORDER BY distance",
@@ -75,20 +95,23 @@ class BotDB:
     def get_nearby_courts(self, user_location):
         """
         Функция для получения списка баскетбольных площадок поблизости
+        :param message user_location: latitude and longitude
+        :return: sorted list of courts
         """
         self.cursor.execute('SELECT * FROM basketball_courts')
-        # Получаем список всех баскетбольных площадок из базы данных
         all_courts = self.cursor.fetchall()
-        # Сортируем площадки по расстоянию от пользователя
         nearby_courts = sorted(all_courts, key=lambda court: geodesic(user_location, (court[3], court[4])).km)
         return nearby_courts
 
     def get_nearest_court(self, latitude, longitude):
         """
-        Define function to get the nearest basketball court from the database
+        Достаем ближайшую площадку в момент нахождения на корте
+        :param float latitude: latitude
+        :param float longitude: longitude
+        :return: one nearest court
         """
         self.cursor.execute(
-            "SELECT *, (acos(sin(?)*sin(latitude) + cos(?)*cos(latitude)*cos(longitude-?))*6371) AS distance FROM basketball_courts WHERE distance<0.5 ORDER BY distance ASC LIMIT 1",
+            "SELECT *, (acos(sin(radians(?))*sin(radians(latitude)) + cos(radians(?))*cos(radians(latitude))*cos(radians(longitude)-radians(?)))*6371) AS distance FROM basketball_courts WHERE distance<0.05 ORDER BY distance",
             (latitude, latitude, longitude,))
         row = self.cursor.fetchone()
         if row is None:
@@ -101,12 +124,20 @@ class BotDB:
     def get_court_by_id(self, court_id: int) -> Tuple[int, str, str, str, float, float, int, int, int, int, int]:
         """
         Возвращает информацию о баскетбольной площадке по ее идентификатору.
+        :param int court_id: ID of court
+        :return: list of information
         """
         self.cursor.execute("SELECT * FROM basketball_courts WHERE id=?", (court_id,))
         court = self.cursor.fetchone()
         return court
 
     def add_player_on_court(self, user_id, court_id):
+        """
+        Добавление человека на площадку
+        :param int user_id: ID of user
+        :param int court_id: ID of court
+        :return: result if commit
+        """
         user_info = self.get_info_about_user(user_id)
         court_info = self.get_court_by_id(court_id)
         self.cursor.execute("UPDATE basketball_courts SET players=? WHERE id=?", ((court_info[7] + 1), court_id,))
@@ -121,6 +152,12 @@ class BotDB:
         return self.conn.commit()
 
     def exit_player_from_court(self, user_id, court_id):
+        """
+        Выход человека с площадки
+        :param int user_id: ID of user
+        :param int court_id: ID of court
+        :return: result of commit
+        """
         user_info = self.get_info_about_user(user_id)
         court_info = self.get_court_by_id(court_id)
         self.cursor.execute("UPDATE basketball_courts SET players=? WHERE id=?", ((court_info[7] - 1), court_id))
@@ -135,15 +172,31 @@ class BotDB:
         return self.conn.commit()
 
 
-
     """ Работа с ивентами """
     def add_basketball_event(self, admin_id, eventname, acsess, levels, address,
-                             latitude, longtitude, date, time, description):
-
-        self.cursor.execute("INSERT INTO `basketball_events` (`admin_id`, `name`, `acsess`, `players_lvls`, `address`, `latitude`, `longitude`, `date`, `time`, `description`, `seted`, `continued`, `finished`, `image_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (admin_id, eventname, acsess, levels, address, latitude, longtitude, date, time, description, 0, 0, 0, 0,))
+                             latitude, longitude, date, time, description):
+        """
+        Добавление в базу баскетбольного мероприятия
+        :param int admin_id: IF of creator
+        :param str eventname: eventname
+        :param str acsess: acsess to event
+        :param str levels: levels of players
+        :param str address: address of event
+        :param int latitude: latitude
+        :param int longitude: longitude
+        :param str date: date of start
+        :param str time: time of start
+        :param str description: description
+        :return: result of commit
+        """
+        self.cursor.execute("INSERT INTO `basketball_events` (`admin_id`, `name`, `acsess`, `players_lvls`, `address`, `latitude`, `longitude`, `date`, `time`, `description`, `seted`, `continued`, `finished`, `image_id`, `players`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (admin_id, eventname, acsess, levels, address, latitude, longitude, date, time, description, 0, 0, 0, 0, 1))
         return self.conn.commit()
 
     def get_all_events(self):
+        """
+        Достаем полный список мероприятий
+        :return: list of courts
+        """
         # self.cursor.execute(
         #     "SELECT *, (acos(sin(?)*sin(latitude) + cos(?)*cos(latitude)*cos(longitude-?))*6371) AS distance FROM basketball_courts ORDER BY distance ASC LIMIT ?",
         #     (latitude, latitude, longitude, radius))
@@ -152,44 +205,68 @@ class BotDB:
         return courts
 
     def get_all_events_by_admin(self, admin_id):
+        """
+        Достаем из базы все ивенты созданные пользователем с id = admin_id
+        :param int admin_id: ID of creator
+        :return: list courts
+        """
         self.cursor.execute("SELECT * FROM basketball_events WHERE `admin_id`=?", (admin_id,))
         courts = self.cursor.fetchall()
         return courts
 
     def delete_event_by_id(self, id):
+        """
+        Удаляем ивент из базы данных
+        :param int id: id of event
+        :return: result of commit
+        """
         self.cursor.execute("DELETE FROM basketball_events WHERE `id`=?", (id,))
         return self.conn.commit()
 
     def set_active_by_id(self, id):
+        """
+        Устанавливаем активный статус ивента
+        :param int id: id of event
+        :return: result of commit
+        """
         self.cursor.execute("UPDATE basketball_events SET `continued`=? WHERE id=?", (1, id))
         return self.conn.commit()
 
     def set_disactive_by_id(self, id):
+        """
+        Устанавливаем завершенный статус ивента
+        :param int id: id of event
+        :return: result of commit
+        """
         self.cursor.execute("UPDATE basketball_events SET `finished`=? WHERE id=?", (1, id))
         return self.conn.commit()
 
-    # def set_active_court(self, court_id):
-    #     """
-    #     Define function to set a basketball court as active in the database
-    #     """
-    #     self.cursor.execute("UPDATE basketball_courts SET active+=1 WHERE id=?", (court_id,))
-    #     self.conn.commit()
-    # def get_records(self, user_id, within = "all"):
-    #     """Получаем историю о доходах/расходах"""
-    #     if within == "day":
-    #         result = self.cursor.execute("SELECT * FROM `records` WHERE `users_id` = ? AND `date` BETWEEN datetime('now', 'start of day') AND datetime('now', 'localtime') ORDER BY `date`",
-    #             (self.get_user_id(user_id),))
-    #     elif within == "week":
-    #         result = self.cursor.execute("SELECT * FROM `records` WHERE `users_id` = ? AND `date` BETWEEN datetime('now', '-6 days') AND datetime('now', 'localtime') ORDER BY `date`",
-    #             (self.get_user_id(user_id),))
-    #     elif within == "month":
-    #         result = self.cursor.execute("SELECT * FROM `records` WHERE `users_id` = ? AND `date` BETWEEN datetime('now', 'start of month') AND datetime('now', 'localtime') ORDER BY `date`",
-    #             (self.get_user_id(user_id),))
-    #     else:
-    #         result = self.cursor.execute("SELECT * FROM `records` WHERE `users_id` = ? ORDER BY `date`",
-    #             (self.get_user_id(user_id),))
-    #
-    #     return result.fetchall()
+    def get_event_by_id(self, event_id):
+        """
+
+        :param event_id:
+        :return:
+        """
+        self.cursor.execute("SELECT * FROM `basketball_events` WHERE `id`=?", (event_id,))
+        event = self.cursor.fetchone()
+        return event
+
+    def add_player_on_event(self, user_id, event_id):
+        """
+
+        :param user_id:
+        :param event_id:
+        :return:
+        """
+        event_info = self.get_event_by_id(event_id)
+        print(event_id)
+        print(event_info[15])
+        print(event_info[0])
+        players = 1
+        self.cursor.execute("UPDATE basketball_events SET players=? WHERE id=1", (event_id,))
+        res = self.conn.commit
+        return res
+
 
     def close(self):
         """
